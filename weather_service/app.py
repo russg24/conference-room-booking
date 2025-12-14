@@ -1,67 +1,49 @@
-from flask import Flask, request, jsonify
+import random
+import time
+from flask import Flask, jsonify
 from flask_cors import CORS
-import boto3
-from botocore.exceptions import ClientError
-import os
-from dotenv import load_dotenv
-load_dotenv()
 
 app = Flask(__name__)
-CORS(app)  # Enable Cross-Origin Resource Sharing
-
-# --- EXPLANATION: AWS CONNECTION ---
-# We connect to DynamoDB using "boto3".
-# We use 'os.getenv' to grab secrets from the environment so we don't hardcode passwords.
-# Initialize DynamoDB
-dynamodb = boto3.resource(
-    'dynamodb',
-    region_name=os.getenv('AWS_REGION', 'us-east-1'),
-    aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
-    aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
-    aws_session_token=os.getenv('AWS_SESSION_TOKEN')  # <--- THIS WAS MISSING!
-)
-# This connects to the specific table you created in your design
-table = dynamodb.Table('WeatherForecast')
+CORS(app)
 
 @app.route('/health', methods=['GET'])
-def health_check():
-    return jsonify({"status": "healthy"}), 200
+def health():
+    return jsonify({"status": "healthy", "service": "Weather Service"}), 200
 
-# --- EXPLANATION: THE MAIN LOGIC ---
-# This matches your UML diagram: GET /forecast?location_id=...&date=...
-@app.route('/forecast', methods=['GET'])
-def get_forecast():
-    # 1. Get parameters from the URL
-    location_id = request.args.get('location_id')
-    date = request.args.get('date')
+@app.route('/weather/<city>', methods=['GET'])
+def get_weather(city):
+    # Normalize city name to lowercase for easy matching
+    city_name = city.lower()
 
-    if not location_id or not date:
-        return jsonify({"error": "Please provide location_id and date"}), 400
-
-    try:
-        # 2. Try to find the data in DynamoDB
-        response = table.get_item(Key={'location_id': location_id, 'date': date})
+    # --- CONTROLLED RANDOMNESS LOGIC ---
+    if 'london' in city_name:
+        # Always cold, but varies slightly (9°C to 14°C)
+        temp = random.randint(9, 14)
+        condition = "Rainy"
         
-        if 'Item' in response:
-            # Found it! Return the real data.
-            # We convert Decimal to float because JSON doesn't like AWS Decimals.
-            return jsonify({
-                "location_id": location_id,
-                "date": date,
-                "temp_c": float(response['Item']['temp_c'])
-            }), 200
-        else:
-            # 3. FALLBACK (Very important for dev)
-            # If the DB is empty (which it is right now), return a dummy value
-            # so the frontend doesn't crash.
-            return jsonify({
-                "message": "Forecast not found, returning simulation", 
-                "temp_c": 21.0
-            }), 200
+    elif 'berlin' in city_name:
+        # Always mild (14°C to 19°C)
+        temp = random.randint(14, 19)
+        condition = "Cloudy"
+        
+    elif 'paris' in city_name:
+        # Always warm (18°C to 25°C)
+        temp = random.randint(18, 25)
+        condition = "Sunny"
+        
+    else:
+        # Default for unknown cities
+        temp = 20
+        condition = "Clear"
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    # Return the Data
+    return jsonify({
+        "city": city.title(),
+        "temperature": temp,
+        "condition": condition,
+        "timestamp": time.time()
+    }), 200
 
 if __name__ == '__main__':
-    # Run the server on port 5000
+    # Run on Port 5000 (Weather Service Port)
     app.run(host='0.0.0.0', port=5000)
