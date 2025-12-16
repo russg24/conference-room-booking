@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Nexus Logistics - Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="navbar">
+        <div style="font-weight: 800; font-size: 24px; letter-spacing: -1px;">nexus logistics.</div>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <span style="font-size: 14px; color: #94a3b8;">Welcome, User</span>
+            <div style="width: 40px; height: 40px; background: #334155; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700;">U</div>
+        </div>
+    </div>
+
+    <div style="max-width: 1200px; margin: 0 auto; padding: 0 20px;">
+        
+        <div style="text-align: center; margin-top: 40px; margin-bottom: 60px;">
+            <h1 style="font-size: 42px; font-weight: 800; margin-bottom: 10px; letter-spacing: -1px;">Choose your destination</h1>
+            <p style="color: #94a3b8; font-size: 18px; margin: 0;">Select a global hub to view available workspaces</p>
+        </div>
+
+        <div class="grid-container" style="justify-content: center;">
+            
+            <div class="city-card" onclick="window.location.href='berlin.html'" style="background: linear-gradient(to top, rgba(0,0,0,0.8), transparent), url('https://images.unsplash.com/photo-1599946347371-68eb71b16afc?auto=format&fit=crop&w=800&q=80') center/cover;">
+                <div class="card-overlay">
+                    <img src="https://upload.wikimedia.org/wikipedia/en/b/ba/Flag_of_Germany.svg" width="20" style="margin-bottom: 10px; border-radius: 2px;">
+                    <div style="color: #94a3b8; font-size: 12px; font-weight: 700; letter-spacing: 1px;">GERMANY</div>
+                    <div style="font-size: 32px; font-weight: 800;">BERLIN</div>
+                </div>
+            </div>
+
+            <div class="city-card" onclick="window.location.href='london.html'" style="background: linear-gradient(to top, rgba(0,0,0,0.8), transparent), url('https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=800&q=80') center/cover;">
+                <div class="card-overlay">
+                    <img src="https://upload.wikimedia.org/wikipedia/en/a/ae/Flag_of_the_United_Kingdom.svg" width="20" style="margin-bottom: 10px; border-radius: 2px;">
+                    <div style="color: #94a3b8; font-size: 12px; font-weight: 700; letter-spacing: 1px;">UNITED KINGDOM</div>
+                    <div style="font-size: 32px; font-weight: 800;">LONDON</div>
+                </div>
+            </div>
+
+            <div class="city-card" onclick="window.location.href='paris.html'" style="background: linear-gradient(to top, rgba(0,0,0,0.8), transparent), url('https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=800&q=80') center/cover;">
+                <div class="card-overlay">
+                    <img src="https://upload.wikimedia.org/wikipedia/en/c/c3/Flag_of_France.svg" width="20" style="margin-bottom: 10px; border-radius: 2px;">
+                    <div style="color: #94a3b8; font-size: 12px; font-weight: 700; letter-spacing: 1px;">FRANCE</div>
+                    <div style="font-size: 32px; font-weight: 800;">PARIS</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    <div style="max-width: 1200px; margin: 60px auto; padding: 0 20px;">
+            <h2 style="font-size: 24px; font-weight: 800; margin-bottom: 20px; border-bottom: 1px solid #334155; padding-bottom: 10px;">
+                Your Upcoming Bookings
+            </h2>
+            
+            <div id="booking-list" style="display: flex; flex-direction: column; gap: 15px;">
+                <p style="color: #94a3b8;">Loading bookings...</p>
+            </div>
+        </div>
+
+        <script>
+        // REPLACE WITH YOUR PORT 5004 URL (No trailing slash)
+        const API_BASE = "https://musical-spoon-v995gg9j6grfxj4x-5004.app.github.dev"; 
+        const USER_ID = 1; 
+
+        // 1. Load the Bookings
+        async function loadBookings() {
+            const list = document.getElementById('booking-list');
+            list.innerHTML = '<p style="color: #94a3b8;">Loading bookings...</p>';
+
+            try {
+                const res = await fetch(`${API_BASE}/bookings/user/${USER_ID}`);
+                const bookings = await res.json();
+
+                if (bookings.length === 0) {
+                    list.innerHTML = '<p style="color: #94a3b8;">No bookings found. Start by selecting a city above!</p>';
+                    return;
+                }
+
+                list.innerHTML = bookings.map(b => `
+                    <div style="background: #1e293b; padding: 20px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #334155;">
+                        <div>
+                            <div style="font-size: 18px; font-weight: 700; color: #fff;">${b.room_name}</div>
+                            <div style="color: #94a3b8; font-size: 14px; margin-top: 5px;">
+                                <i class="fa-regular fa-calendar"></i> ${b.date} &nbsp;|&nbsp; 
+                                <span style="color: #38bdf8;">Reference #${b.id}</span>
+                            </div>
+                        </div>
+                        <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 10px;">
+                            <div style="font-size: 20px; font-weight: 700; color: #fff;">£${b.total_price.toFixed(2)}</div>
+                            
+                            <button onclick="cancelBooking(${b.id})" style="background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; transition: 0.2s;">
+                                <i class="fa-solid fa-trash"></i> Cancel
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+                
+            } catch (err) {
+                console.error(err);
+                list.innerHTML = '<p style="color: #ef4444;">Error loading bookings. Is the backend running?</p>';
+            }
+        }
+
+        // 2. The Cancel Logic
+        async function cancelBooking(id) {
+            if (!confirm("Are you sure you want to cancel this booking?")) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/bookings/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (res.ok) {
+                    // If successful, reload the list to show it's gone
+                    loadBookings(); 
+                } else {
+                    alert("Failed to cancel booking.");
+                }
+            } catch (error) {
+                console.error("Error canceling:", error);
+                alert("Network error. Could not connect to server.");
+            }
+        }
+
+        // Run on load
+        loadBookings();
+    </script>
+</body>
+</html>
