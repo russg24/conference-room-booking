@@ -58,14 +58,30 @@ def create_booking():
         if weather_response.status_code == 200:
             current_temp = weather_response.json()['temperature']
 
-        # 3. ALGORITHM: Calculate Surcharge
-        # Target is 21°C. We charge £20 for every degree of difference (Heating OR Cooling)
+        # 3. ALGORITHM: Calculate Surcharge (CORRECTED)
+        # Target is 21°C. We apply a PERCENTAGE surcharge based on the difference.
         target_temp = 21
         temp_diff = abs(target_temp - current_temp)
-        surcharge = temp_diff * 20
         
-        total_price = base_price + surcharge
+        surcharge_percentage = 0.0
 
+        # Logic 
+        if temp_diff < 2:
+            surcharge_percentage = 0.0
+        elif 2 <= temp_diff < 5:
+            surcharge_percentage = 0.10  # 10%
+        elif 5 <= temp_diff < 10:
+            surcharge_percentage = 0.20  # 20%
+        elif 10 <= temp_diff < 20:
+            surcharge_percentage = 0.30  # 30%
+        else: # >= 20
+            surcharge_percentage = 0.50  # 50%
+
+        # Calculate the extra cost based on the Base Price
+        surcharge = base_price * surcharge_percentage
+        
+        # Final Total
+        total_price = base_price + surcharge
         # 4. DATABASE: Save the Booking
         conn = get_db_connection()
         cur = conn.cursor()
