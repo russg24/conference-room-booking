@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Available Rooms</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+
+    <div class="room-header">
+        <a href="dashboard.html" style="display: flex; align-items: center; gap: 10px; font-weight: 600;">
+            <i class="fa-solid fa-arrow-left"></i> Back
+        </a>
+        
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <img id="city-flag" src="" width="30" style="border-radius: 4px; display: none;">
+            <h2 id="city-title" style="margin: 0;">Loading...</h2>
+        </div>
+
+        <div style="background: #1e293b; padding: 10px; border-radius: 8px; border: 1px solid #334155;">
+            <i class="fa-regular fa-calendar" style="color: #94a3b8; margin-right: 8px;"></i>
+            <input type="date" id="selected-date" style="background: transparent; border: none; color: white; font-family: 'Inter';">
+        </div>
+    </div>
+
+    <div class="room-list">
+        <h1 style="margin-bottom: 30px;" id="page-headline">Available Rooms</h1>
+        <div id="dynamic-room-container">
+            <p style="color: #94a3b8;">Loading available spaces...</p>
+        </div>
+    </div>
+
+    <div id="confirm-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h2 style="margin: 0;">Confirm Booking</h2>
+            <p id="modal-room-name" style="color: #94a3b8; margin: 0;">Room Name</p>
+            <div id="modal-date" style="background: #0f172a; display: inline-block; padding: 8px 12px; border-radius: 6px; margin-top: 10px; font-size: 14px;"></div>
+            
+            <hr style="border: 0; border-top: 1px solid #334155; margin: 20px 0;">
+
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                <span style="color: #94a3b8;">Base Price</span>
+                <span id="modal-base-price">£0.00</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; color: #3b82f6; font-weight: 700;">
+                <span><i class="fa-solid fa-temperature-half"></i> Surcharge</span>
+                <span id="modal-surcharge">+£0.00</span>
+            </div>
+            <div style="text-align: right; font-size: 12px; color: #94a3b8; margin-bottom: 15px;">
+                Temp: <span id="modal-temp">--</span> (<span id="modal-diff">--</span> diff)
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; font-size: 24px; font-weight: 800;">
+                <span>TOTAL</span>
+                <span id="modal-total">£0.00</span>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 15px; margin-top: 30px;">
+                <button onclick="closeModal()" style="background: transparent; border: 1px solid #334155; color: white; padding: 12px; border-radius: 8px; cursor: pointer;">Cancel</button>
+                <button onclick="submitBooking()" style="background: #3b82f6; border: none; color: white; padding: 12px; border-radius: 8px; font-weight: 700; cursor: pointer;">Confirm & Book →</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+
+    <script>
+        const API_ROOMS = "https://musical-spoon-v995gg9j6grfxj4x-5002.app.github.dev";
+        
+        // 1. Get the City from the URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const city = urlParams.get('city') || 'Berlin'; 
+
+        // 2. Setup Page Headers
+        document.getElementById('city-title').textContent = city;
+        document.getElementById('page-headline').textContent = `Available Rooms in ${city}`;
+
+        const flags = {
+            'Berlin': 'https://upload.wikimedia.org/wikipedia/en/b/ba/Flag_of_Germany.svg',
+            'London': 'https://upload.wikimedia.org/wikipedia/en/a/ae/Flag_of_the_United_Kingdom.svg',
+            'Paris': 'https://upload.wikimedia.org/wikipedia/en/c/c3/Flag_of_France.svg'
+        };
+        if(flags[city]) {
+            const img = document.getElementById('city-flag');
+            img.src = flags[city];
+            img.style.display = 'block';
+        }
+
+        // 3. FETCH ROOMS
+        async function loadRooms() {
+            const container = document.getElementById('dynamic-room-container');
+            
+            try {
+                const res = await fetch(`${API_ROOMS}/rooms`);
+                const allRooms = await res.json();
+                const cityRooms = allRooms.filter(r => r.location.toLowerCase() === city.toLowerCase());
+
+                if (cityRooms.length === 0) {
+                    container.innerHTML = `<p>No rooms found for ${city} in the database.</p>`;
+                    return;
+                }
+
+                container.innerHTML = cityRooms.map(room => `
+                    <div class="room-card-horizontal">
+                        <img src="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=600&q=80" class="room-img">
+                        <div class="room-info">
+                            <h2 style="margin: 0 0 10px 0;">${room.name}</h2>
+                            <p style="color: #94a3b8; font-size: 14px; margin-bottom: 20px;">
+                                High-quality workspace located in ${room.location}.
+                            </p>
+                            <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+                                <span style="background: #334155; padding: 5px 10px; border-radius: 5px; font-size: 12px;">
+                                    <i class="fa-solid fa-user-group"></i> ${room.capacity} People
+                                </span>
+                            </div>
+                            <div style="display: flex; align-items: center; border-top: 1px solid #334155; padding-top: 15px;">
+                                <div>
+                                    <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase;">Price</div>
+                                    <div class="price-tag">£${room.price_per_hour}</div>
+                                </div>
+                                <button class="btn-book" onclick="openBookingModal('${room.name}', ${room.price_per_hour}, '${city}')">Book Now</button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error(error);
+                container.innerHTML = `<p style="color: #ef4444;">Error connecting to Room Service (Port 5002).</p>`;
+            }
+        }
+        loadRooms();
+    </script>
+</body>
+</html>

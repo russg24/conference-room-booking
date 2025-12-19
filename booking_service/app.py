@@ -4,12 +4,15 @@ import psycopg2
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
-from datetime import datetime, date  # Critical import for date checking
+from datetime import datetime, date
 
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
+
+# --- ☢️ THE NUCLEAR CORS FIX ☢️ ---
+# This explicitly allows ALL origins, ALL headers, and supports credentials.
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
 # --- CONFIGURATION ---
 ROOM_SERVICE_URL = os.getenv('ROOM_SERVICE_URL', 'http://localhost:5002')
@@ -20,8 +23,52 @@ def get_db_connection():
         host=os.getenv('DB_HOST', 'localhost'),
         database=os.getenv('DB_NAME', 'postgres'),
         user=os.getenv('DB_USER', 'postgres'),
-        password=os.getenv('DB_PASS', 'postgres')
+        password=os.getenv('DB_PASS', 'postgres'),
+        port=os.getenv('DB_PORT', 5432)
     )
+
+# --- NEW: LOGIN ENDPOINT (Added for Phase 2) ---
+@app.route('/login', methods=['POST', 'OPTIONS'])
+def login():
+    # Handle the "Preflight" check manually if CORS library misses it
+    if request.method == 'OPTIONS':
+        return jsonify({'message': 'CORS OK'}), 200
+
+    data = request.get_json()
+    email = data.get('email')
+    password = data.get('password')
+
+    if not email or not password:
+        return jsonify({"error": "Email and password required"}), 400
+
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # 1. Find the user by Email
+        cur.execute("SELECT id, name, password_hash FROM users WHERE email = %s", (email,))
+        user = cur.fetchone()
+        
+        cur.close()
+        conn.close()
+
+        if user:
+            user_id, name, stored_password = user
+            
+            # 2. Check the Password
+            if password == stored_password:
+                return jsonify({
+                    "message": "Login successful",
+                    "user_id": user_id,
+                    "name": name
+                }), 200
+        
+        return jsonify({"error": "Invalid credentials"}), 401
+
+    except Exception as e:
+        print(f"LOGIN ERROR: {e}")
+        return jsonify({"error": str(e)}), 500
+
 
 @app.route('/health', methods=['GET'])
 def health():
@@ -34,17 +81,16 @@ def create_booking():
     user_id = data.get('user_id')
     room_id = data.get('room_id')
     room_name = data.get('room_name')
-    date_str = data.get('date') # Use date_str to be clear it's a string first
+    date_str = data.get('date')
     
-    # NEW: Check if this is just a preview (Quote)
+    # Check if this is just a preview (Quote)
     is_preview = data.get('preview', False)
 
     if not all([user_id, room_id, date_str]):
         return jsonify({"error": "Missing fields"}), 400
 
-    # --- NEW: BLOCK PAST DATES ---
+    # --- BLOCK PAST DATES ---
     try:
-        # Convert string "2025-10-24" to a Python Date Object
         booking_date = datetime.strptime(date_str, '%Y-%m-%d').date()
         today = date.today()
 
@@ -55,7 +101,6 @@ def create_booking():
             
     except ValueError:
         return jsonify({"error": "Invalid date format. Use YYYY-MM-DD"}), 400
-    # -----------------------------
 
     try:
         # 1. ORCHESTRATION: Get Room Details
@@ -84,13 +129,13 @@ def create_booking():
         if temp_diff < 2:
             surcharge_percentage = 0.0
         elif 2 <= temp_diff < 5:
-            surcharge_percentage = 0.10  # 10%
+            surcharge_percentage = 0.10
         elif 5 <= temp_diff < 10:
-            surcharge_percentage = 0.20  # 20%
+            surcharge_percentage = 0.20
         elif 10 <= temp_diff < 20:
-            surcharge_percentage = 0.30  # 30%
+            surcharge_percentage = 0.30
         else: 
-            surcharge_percentage = 0.50  # 50%
+            surcharge_percentage = 0.50
 
         surcharge = base_price * surcharge_percentage
         total_price = base_price + surcharge
@@ -113,7 +158,7 @@ def create_booking():
         conn = get_db_connection()
         cur = conn.cursor()
         
-        # Check for existing booking manually (Double Booking Protection)
+        # Double Booking Protection
         cur.execute("SELECT id FROM bookings WHERE room_id = %s AND date = %s", (room_id, date_str))
         if cur.fetchone():
             cur.close()
@@ -176,10 +221,12 @@ def get_user_bookings(user_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# --- NEW: DELETE BOOKING ENDPOINT ---
+
+# --- DELETE BOOKING ENDPOINT ---
 @app.route('/bookings/<int:booking_id>', methods=['DELETE'])
 def delete_booking(booking_id):
     try:
+        # Make sure this block is indented!
         conn = get_db_connection()
         cur = conn.cursor()
         
@@ -201,6 +248,6 @@ def delete_booking(booking_id):
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-    
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5004)
+    port = int(os.environ.get('PORT', 5004))
+    app.run(host='0.0.0.0', port=port)

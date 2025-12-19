@@ -1,27 +1,53 @@
-// CONFIGURATION: Ensure this matches your forwarded Codespaces URL (No trailing slash!)
-// Example: "https://studious-space-waddle-5004.app.github.dev"
-const API_URL = "https://musical-spoon-v995gg9j6grfxj4x-5004.app.github.dev"
-// Global variable to store the payload for the final step
+// CONFIGURATION: Check Port 5004 URL (No trailing slash)
+const API_URL = "https://musical-spoon-v995gg9j6grfxj4x-5004.app.github.dev";
+
 let pendingBookingPayload = null;
 
+// 1. INITIALIZATION: Run immediately on load
+window.addEventListener('load', () => {
+    // Check Login
+    const userId = localStorage.getItem('userId');
+    if (!userId) {
+        window.location.href = 'login.html';
+        return;
+    }
+
+    // Set Date Picker to Today
+    const dateInput = document.getElementById('selected-date');
+    if (dateInput) {
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.setAttribute('min', today);
+        dateInput.value = today;
+    }
+});
+
+// 2. OPEN PREVIEW MODAL
 async function openBookingModal(roomName, basePrice, city) {
     const dateInput = document.getElementById('selected-date').value;
+    const userId = localStorage.getItem('userId'); // FIX: Use Real User ID
+
     if (!dateInput) { alert("Please select a date first"); return; }
     
-    // 1. Prepare Payload with PREVIEW flag
+    // Simple Mapping for demo purposes
+    let roomId = 1; 
+    if (roomName.includes("Alexanderplatz") || roomName.includes("Big Ben") || roomName.includes("Eiffel")) {
+        roomId = 2;
+    }
+
     const payload = {
-        user_id: 1,
-        room_id: roomName.includes("Mitte") || roomName.includes("Westminster") || roomName.includes("Louvre") ? 1 : 2, 
+        user_id: userId, 
+        room_id: roomId, 
         room_name: roomName,
         date: dateInput,
-        preview: true  // <--- THIS TELLS BACKEND: "DON'T SAVE YET!"
+        preview: true 
     };
 
-    // Save this for later (when user clicks Confirm)
-    pendingBookingPayload = { ...payload, preview: false }; // Prepare the real version
+    pendingBookingPayload = { ...payload, preview: false }; 
 
     try {
-        console.log("Fetching price preview...");
+        const button = event.target; 
+        button.innerText = "Calculating...";
+        
         const response = await fetch(`${API_URL}/bookings`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -29,46 +55,42 @@ async function openBookingModal(roomName, basePrice, city) {
         });
 
         const data = await response.json();
+        button.innerText = "Book Now"; 
 
         if (response.ok) {
-            // 2. Update Modal with PREVIEW Data
             document.getElementById('modal-room-name').innerText = `${roomName}, ${city}`;
             document.getElementById('modal-date').innerHTML = `<i class="fa-regular fa-calendar"></i> ${dateInput}`;
-            
             document.getElementById('modal-base-price').innerText = `£${data.base_price.toFixed(2)}`;
             document.getElementById('modal-surcharge').innerText = `+£${data.surcharge.toFixed(2)}`;
             document.getElementById('modal-total').innerText = `£${data.total_price.toFixed(2)}`;
-            document.getElementById('modal-temp').innerText = `${data.weather_temp}°C`;
             
-            const variance = Math.abs(data.weather_temp - 21);
-            document.getElementById('modal-diff').innerText = `${variance}°C`;
-
-            // Show the Modal
+            // Show Modal
             document.getElementById('confirm-modal').style.display = 'flex';
         } else {
-            alert("Error calculating price: " + (data.error || "Unknown error"));
+            alert("Error: " + data.error);
         }
 
     } catch (error) {
         console.error("Connection Error:", error);
         alert("Could not connect to Backend.");
+        event.target.innerText = "Book Now";
     }
 }
 
+// 3. CLOSE MODAL
 function closeModal() {
     document.getElementById('confirm-modal').style.display = 'none';
 }
 
+// 4. SUBMIT REAL BOOKING
 async function submitBooking() {
-    // 3. The REAL Booking Step
     if (!pendingBookingPayload) return;
 
-    const button = event.target;
+    const button = document.querySelector('#confirm-modal button:last-child');
     button.innerText = "Processing...";
     button.disabled = true;
 
     try {
-        // Send the REAL request (preview: false)
         const response = await fetch(`${API_URL}/bookings`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -78,32 +100,15 @@ async function submitBooking() {
         const result = await response.json();
 
         if (response.ok) {
-            alert(`✅ BOOKING CONFIRMED!\n\nReference: #${result.id}\nTotal: £${result.total_price.toFixed(2)}`);
+            alert(`✅ BOOKING CONFIRMED!\nReference: #${result.id}`);
             window.location.href = "dashboard.html";
         } else {
             alert("Booking Failed: " + result.error);
         }
     } catch (error) {
-        alert("Network Error: Could not confirm booking.");
+        alert("Network Error.");
     } finally {
         button.innerText = "Confirm & Book →";
         button.disabled = false;
     }
-        // --- AUTOMATICALLY SET DATE TO TODAY & BLOCK PAST ---
-    window.addEventListener('load', () => {
-        const dateInput = document.getElementById('selected-date');
-        
-        if (dateInput) {
-            // 1. Get Today's Date in YYYY-MM-DD format
-            const today = new Date().toISOString().split('T')[0];
-            
-            // 2. Set the "min" attribute (Blocks past dates selection)
-            dateInput.setAttribute('min', today);
-            
-            // 3. FORCE THE VALUE TO TODAY (This fixes the "blank" input)
-            dateInput.value = today;
-
-            console.log(`Date picker defaulted to: ${today}`);
-        }
-    });
 }

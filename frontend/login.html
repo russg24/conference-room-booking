@@ -5,6 +5,17 @@
     <title>Sign In - Nexus</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Small addition for the error message */
+        .error-msg {
+            color: #ef4444; 
+            font-size: 13px; 
+            margin-top: 15px; 
+            font-weight: 600;
+            display: none; /* Hidden by default */
+            text-align: center;
+        }
+    </style>
 </head>
 <body>
     <div class="login-wrapper">
@@ -13,19 +24,76 @@
         <div class="login-card">
             <h2 style="margin-top: 0;">Sign in</h2>
             
-            <label style="font-size: 12px; font-weight: 700; color: #888; text-transform: uppercase;">Username</label>
-            <input type="text" class="login-input" placeholder="Enter your username">
-            
-            <label style="font-size: 12px; font-weight: 700; color: #888; text-transform: uppercase;">Password</label>
-            <input type="password" class="login-input" placeholder="........">
-            
-            <button class="btn-pill" style="width: 100%; border-radius: 8px; margin-top: 10px;" onclick="window.location.href='dashboard.html'">Sign In</button>
-            
-            <div style="text-align: center; margin-top: 20px; font-size: 14px; color: #666;">
-                <p>OR</p>
-                <p>Continue with Google</p>
-            </div>
+            <form id="loginForm">
+                
+                <label style="font-size: 12px; font-weight: 700; color: #888; text-transform: uppercase;">Email Address</label>
+                <input type="email" id="email" class="login-input" placeholder="john@nexus.com" required>
+                
+                <label style="font-size: 12px; font-weight: 700; color: #888; text-transform: uppercase; display: block; margin-top: 15px;">Password</label>
+                <input type="password" id="password" class="login-input" placeholder="........" required>
+                
+                <button type="submit" class="btn-pill" style="width: 100%; border-radius: 8px; margin-top: 25px; cursor: pointer;">Sign In</button>
+                
+                <div id="error-text" class="error-msg">Invalid email or password</div>
+
+                <div style="text-align: center; margin-top: 20px; font-size: 14px; color: #666;">
+                    <p>OR</p>
+                    <p style="cursor: pointer;">Continue with Google</p>
+                </div>
+            </form>
         </div>
     </div>
+
+    <script>
+        // ⚠️ PASTE YOUR PORT 5004 URL HERE (No trailing slash)
+        const API_BASE = "https://musical-spoon-v995gg9j6grfxj4x-5004.app.github.dev";
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault(); // Stop page from refreshing
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorText = document.getElementById('error-text');
+            const btn = document.querySelector('button');
+
+            // Visual feedback (Loading...)
+            btn.innerText = "Verifying...";
+            btn.style.opacity = "0.7";
+            errorText.style.display = 'none';
+
+            try {
+                // 1. Send credentials to Python Backend
+                const res = await fetch(`${API_BASE}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    // ✅ SUCCESS: 
+                    // Save the User ID so the Dashboard knows who we are!
+                    localStorage.setItem('userId', data.user_id);
+                    localStorage.setItem('userName', data.name);
+                    
+                    // Redirect to Dashboard
+                    window.location.href = 'dashboard.html';
+                } else {
+                    // ❌ FAIL: Show error
+                    btn.innerText = "Sign In";
+                    btn.style.opacity = "1";
+                    errorText.style.display = 'block';
+                    errorText.textContent = data.error || "Login failed";
+                }
+            } catch (err) {
+                console.error(err);
+                btn.innerText = "Sign In";
+                btn.style.opacity = "1";
+                errorText.style.display = 'block';
+                errorText.textContent = "Server error. Is the backend running?";
+            }
+        });
+    </script>
 </body>
 </html>
