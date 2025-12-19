@@ -93,6 +93,35 @@
         async function loadRooms() {
             const container = document.getElementById('dynamic-room-container');
             
+            // --- CUSTOM ROOM DATA ---
+            const roomImages = {
+                "Mitte Suite": "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=600&q=80",
+                "Alexanderplatz Hall": "https://images.unsplash.com/photo-1604328698804-8d5a31499ca6?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+                "Westminster Suite": "https://images.unsplash.com/photo-1517502884422-41eaead166d4?q=80&w=1625&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+                "Piccadilly Hall": "https://images.unsplash.com/photo-1596522354195-e84ae3c98731?q=80&w=2087&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+                "Louvre Room": "https://images.unsplash.com/photo-1600508774634-4e11d34730e2?auto=format&fit=crop&w=600&q=80",
+                "Versailles Hall": "https://plus.unsplash.com/premium_photo-1661907977530-eb64ddbfb88a?q=80&w=2121&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+            };
+
+            const roomDescriptions = {
+                "Mitte Suite": "Modern, open-plan workspace with industrial aesthetics and breakout areas.",
+                "Alexanderplatz Hall": "Expansive hall with panoramic city views, perfect for large conferences.",
+                "Westminster Suite": "Premium executive suite with Thames views, ideal for high-stakes meetings.",
+                "Piccadilly Hall": "Spacious, vibrant venue designed for networking events and presentations.",
+                "Louvre Room": "Artistic, light-filled studio designed to inspire creative brainstorming.",
+                "Versailles Hall": "Opulent luxury hall with high-end concierge service for VIP summits."
+            };
+
+            // --- UNIQUE FEATURES ---
+            const roomFeatures = {
+                "Mitte Suite": '<i class="fa-solid fa-wifi"></i> 5G WiFi',
+                "Alexanderplatz Hall": '<i class="fa-solid fa-video"></i> 4K Video Wall',
+                "Westminster Suite": '<i class="fa-solid fa-shield-halved"></i> Soundproof',
+                "Piccadilly Hall": '<i class="fa-solid fa-microphone-lines"></i> Event Stage',
+                "Louvre Room": '<i class="fa-solid fa-sun"></i> Natural Light',
+                "Versailles Hall": '<i class="fa-solid fa-bell-concierge"></i> Butler Service'
+            };
+
             try {
                 const res = await fetch(`${API_ROOMS}/rooms`);
                 const allRooms = await res.json();
@@ -105,19 +134,22 @@
 
                 container.innerHTML = cityRooms.map(room => `
                     <div class="room-card-horizontal">
-                        <img src="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=600&q=80" class="room-img">
+                        <img src="${roomImages[room.name] || 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=600&q=80'}" class="room-img">
+                        
                         <div class="room-info">
                             <h2 style="margin: 0 0 10px 0;">${room.name}</h2>
+                            
                             <p style="color: #94a3b8; font-size: 14px; margin-bottom: 20px;">
-                                High-quality workspace located in ${room.location}.
+                                ${roomDescriptions[room.name] || `High-quality workspace located in ${room.location}.`}
                             </p>
                             
                             <div style="display: flex; gap: 15px; margin-bottom: 20px;">
                                 <span style="background: #334155; padding: 5px 10px; border-radius: 5px; font-size: 12px;">
                                     <i class="fa-solid fa-user-group"></i> ${room.capacity} People
                                 </span>
-                                <span style="background: #334155; padding: 5px 10px; border-radius: 5px; font-size: 12px;">
-                                    Available
+                                
+                                <span style="background: #3b82f6; color: white; padding: 5px 10px; border-radius: 5px; font-size: 12px; font-weight: 600;">
+                                    ${roomFeatures[room.name] || '<i class="fa-solid fa-check"></i> Premium'}
                                 </span>
                             </div>
 
