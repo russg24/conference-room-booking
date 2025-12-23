@@ -1,70 +1,30 @@
-name: Deploy Microservices
+name: Production Deployment
 
 on:
   push:
     branches: [ "main" ]
 
 jobs:
-  build-and-push:
+  deploy:
     runs-on: ubuntu-latest
-    
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
-
-    - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v2
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
-        aws-region: ${{ secrets.AWS_REGION }}
-
-    - name: Login to Amazon ECR
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v1
-
-    # --- BUILD WEATHER SERVICE ---
-    - name: Build, tag, and push Weather Service
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: weather-service
-        IMAGE_TAG: latest
-      run: |
-        cd weather_service
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-
-# --- BUILD AUTH SERVICE ---
-    - name: Build, tag, and push Auth Service
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: auth-service
-        IMAGE_TAG: latest
-      run: |
-        cd auth_service
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-
-    
-        # --- BUILD ROOM SERVICE ---
-    - name: Build, tag, and push Room Service
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: room-service
-        IMAGE_TAG: latest
-      run: |
-        cd room_service
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-
-        # --- BUILD BOOKING SERVICE ---
-    - name: Build, tag, and push Booking Service
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: booking-service
-        IMAGE_TAG: latest
-      run: |
-        cd booking_service
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+      - name: Deploy to AWS EC2
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # 1. Stop current services
+            pkill -f "python" || true
+            
+            # 2. Get latest code
+            cd conference-room-booking
+            git reset --hard origin/main
+            git pull origin main
+            
+            # 3. Restart Application
+            chmod +x start.sh
+            # Run in background so GitHub doesn't hang
+            nohup ./start.sh > output.log 2>&1 &
+            echo "Deployment Triggered!"
