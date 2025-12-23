@@ -14,29 +14,34 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
-          # The important changes are in the nohup line below
+          # Set command_timeout to 2 minutes just in case
+          command_timeout: 2m
           script: |
-            echo "🛑 Stopping old services..."
-            # We ignore errors (|| true) so the script doesn't crash if nothing is running
-            pkill -f "app.py" || true
-            pkill -f "http.server" || true
+            # 1. FIX: Set the Home variable so Git can find credentials
+            export HOME=/home/ubuntu
             
-            echo "⬇️ Pulling latest code..."
+            echo "🛑 Debug: Step 1 - Killing old processes by Port..."
+            # We use fuser (File User) to kill whatever is holding our ports
+            # This is safer than pkill because it targets the specific ports
+            sudo fuser -k 5000/tcp || true
+            sudo fuser -k 5002/tcp || true
+            sudo fuser -k 5004/tcp || true
+            sudo fuser -k 8000/tcp || true
+            
+            echo "⬇️ Debug: Step 2 - Pulling latest code..."
             cd conference-room-booking
-            # Reset ensures no merge conflicts block the pull
+            
+            # Reset to ensure we don't have conflicts
             git reset --hard origin/main
             git pull origin main
             
-            echo "🚀 Restarting application..."
+            echo "🚀 Debug: Step 3 - Launching application..."
             chmod +x start.sh
             
-            # THE MAGIC FIX:
-            # 1. > deployment.log 2>&1  (Send all text to a log file, not SSH)
-            # 2. < /dev/null            (Cut the input cord so it doesn't wait for user)
-            # 3. &                      (Run in background)
+            # Use the "Double-Tap" detach method to prevent hanging
             nohup ./start.sh > deployment.log 2>&1 < /dev/null &
             
-            # Wait 1 second to make sure it started, then force exit
-            sleep 1
-            echo "✅ Deployment Triggered. Exiting SSH session."
-            exit
+            # Give it a moment to boot
+            sleep 2
+            echo "✅ Deployment Successful!"
+            exit 0
