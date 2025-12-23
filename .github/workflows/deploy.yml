@@ -15,16 +15,21 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # 1. Stop current services
-            pkill -f "python" || true
+            # 1. Stop ONLY our specific services (Safe Kill)
+            echo "🛑 Stopping services..."
+            pkill -f "app.py" || true
+            pkill -f "http.server" || true
             
             # 2. Get latest code
+            echo "⬇️ Pulling latest code..."
             cd conference-room-booking
             git reset --hard origin/main
             git pull origin main
             
             # 3. Restart Application
+            echo "🚀 Restarting application..."
             chmod +x start.sh
-            # Run in background so GitHub doesn't hang
-            nohup ./start.sh > output.log 2>&1 &
-            echo "Deployment Triggered!"
+            # Run in background with nohup so it survives the SSH disconnect
+            nohup ./start.sh > deployment.log 2>&1 &
+            
+            echo "✅ Deployment Complete!"
